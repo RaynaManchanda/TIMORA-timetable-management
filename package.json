@@ -1,0 +1,24 @@
+{
+  "name": "timora-rescheduling-ai",
+  "version": "1.0.0",
+  "description": "TIMORA - Adaptive Scheduling / Rescheduling + AI Assistance Module",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "keywords": [
+    "timetable",
+    "adaptive-scheduling",
+    "rescheduling",
+    "ai",
+    "timora"
+  ],
+  "author": "",
+  "license": "ISC"
+}
