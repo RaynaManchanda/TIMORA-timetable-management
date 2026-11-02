@@ -2,3 +2,5 @@
 *.sh text eol=lf
 # The college workbook is binary.
 *.xlsx binary
+# SQL (the database dump especially) must keep LF: a CR would end up inside loaded values.
+*.sql text eol=lf
