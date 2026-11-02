@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { aiAssistantService } from '../src/ai/ai-assistant-service.js';
+import { SEED_FACULTY, SEED_SUBJECTS } from './support/fixtures.js';
+
+const catalog = { faculty: SEED_FACULTY, subjects: SEED_SUBJECTS };
 
 test('AI Assistant - Interpret Natural Language Input', async () => {
-  const result = await aiAssistantService.interpretConstraint('Prof Turing is unavailable on Tuesday 10-12');
+  const result = await aiAssistantService.interpretConstraint('Prof Turing is unavailable on Tuesday 10-12', catalog);
 
   assert.equal(result.status, 'AWAITING_HUMAN_VALIDATION');
   assert.equal(result.isValidated, false);
@@ -13,7 +16,7 @@ test('AI Assistant - Interpret Natural Language Input', async () => {
 });
 
 test('AI Assistant - Human Validation Step Wrapper', async () => {
-  const interpreted = await aiAssistantService.interpretConstraint('Cancel Database class on Wednesday');
+  const interpreted = await aiAssistantService.interpretConstraint('Cancel Database class on Wednesday', catalog);
   const validated = aiAssistantService.validateConstraint(interpreted, { reason: 'Verified by Admin' });
 
   assert.equal(validated.status, 'VALIDATED');
@@ -37,4 +40,17 @@ test('AI Assistant - Data-Backed Explanation Generator (No Hallucination)', () =
   assert.ok(explanation.includes('Database Systems'));
   assert.ok(explanation.includes('100% hard-constraint compliant'));
   assert.ok(explanation.includes('92/100'));
+});
+test('AI Assistant - Rejects an empty natural-language prompt', async () => {
+  await assert.rejects(
+    () => aiAssistantService.interpretConstraint(''),
+    { message: 'Natural language prompt text is required.' }
+  );
+});
+
+test('AI Assistant - Rejects validation without an interpreted constraint', () => {
+  assert.throws(
+    () => aiAssistantService.validateConstraint(null),
+    { message: 'Valid interpreted constraint result required for validation.' }
+  );
 });

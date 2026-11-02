@@ -1,0 +1,4 @@
+# Shell scripts run inside a Linux container and must keep LF line endings.
+*.sh text eol=lf
+# The college workbook is binary.
+*.xlsx binary

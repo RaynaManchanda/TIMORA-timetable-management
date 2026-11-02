@@ -1,147 +1,111 @@
 /**
  * TIMORA - Rescheduling Routes
- * API endpoints for alternative generation, comparison, human approval, versioning, and rollback.
+ * Alternative generation, comparison, human approval, versioning and rollback, plus the reference
+ * data the frontend needs. Every route needs a valid token; changes need an administrator.
  */
 
 import express from 'express';
-import { disruptionService } from '../adaptive/disruption/disruption-service.js';
-import { impactAnalyzer } from '../adaptive/impact/impact-analyzer.js';
-import { reschedulingEngine } from '../adaptive/rescheduling/rescheduling-engine.js';
-import { alternativeComparator } from '../adaptive/rescheduling/alternative-comparator.js';
-import { approvalService } from '../adaptive/approval/approval-service.js';
-import { versionService } from '../adaptive/versioning/version-service.js';
-import { timetableRepository } from '../repositories/timetable-repository.js';
-import { aiAssistantService } from '../ai/ai-assistant-service.js';
+import { asyncHandler } from '../utils/async-handler.js';
+import { ADMIN_ROLES, ROLES } from '../constants/roles.js';
+import { ValidationError } from '../errors/app-errors.js';
+import { sectionsOf } from '../adapters/scheduling-engine-adapter.js';
+import { validateIdParam } from '../validation/academic-validator.js';
+import { presentFaculty } from './academic-routes.js';
 
-const router = express.Router();
+/**
+ * Limit timetable entries to what a user may see: students see their section, faculty their own classes.
+ *
+ * @param {object[]} entries Entries in engine shape.
+ * @param {{ role: string, sectionId?: string, facultyId?: string }} user Requesting user.
+ * @returns {object[]}
+ */
+export function scopeEntriesForUser(entries, user) {
+  if (ADMIN_ROLES.includes(user.role)) return entries;
+  if (user.role === ROLES.STUDENT) {
+    return user.sectionId ? entries.filter((entry) => sectionsOf(entry).includes(user.sectionId)) : [];
+  }
+  if (user.role === ROLES.FACULTY) {
+    return user.facultyId ? entries.filter((entry) => entry.facultyId === user.facultyId) : [];
+  }
+  return [];
+}
 
-// Generate alternative schedules for a disruption
-router.post('/generate-alternatives', (req, res) => {
-  try {
-    const { disruptionId } = req.body;
-    if (!disruptionId) {
-      return res.status(400).json({ success: false, error: 'Disruption ID is required.' });
-    }
+/**
+ * Adaptive rescheduling routes, mounted at /api/rescheduling.
+ *
+ * @param {{ adaptiveService: object, auth: { authenticate: Function, requireAdmin: Function } }} dependencies Collaborators.
+ * @returns {import('express').Router}
+ */
+export function createReschedulingRoutes({ adaptiveService, auth }) {
+  const router = express.Router();
+  router.use(auth.authenticate);
 
-    const disruption = disruptionService.getDisruptionById(disruptionId);
-    if (!disruption) {
-      return res.status(404).json({ success: false, error: 'Disruption not found.' });
-    }
-
-    const impactResult = impactAnalyzer.analyzeImpact(disruption);
-    const alternatives = reschedulingEngine.generateAlternatives(impactResult);
-
-    // Attach AI explanations to alternatives
-    alternatives.forEach(alt => {
-      alt.explanation = aiAssistantService.generateExplanation(alt, disruption);
-    });
-
-    const comparisonPayload = alternativeComparator.compareAlternatives(alternatives, disruption);
-
+  // Reference data for the forms and grids (contact details only for administrators).
+  router.get('/metadata', asyncHandler(async (req, res) => {
+    const metadata = await adaptiveService.getMetadata();
+    const isAdmin = ADMIN_ROLES.includes(req.user.role);
     res.json({
       success: true,
-      impactResult,
-      comparisonPayload
+      ...metadata,
+      faculty: metadata.faculty.map((person) => presentFaculty(person, req.user)),
+      blocks: isAdmin ? metadata.blocks : metadata.blocks.filter((block) => block.sectionId === req.user.sectionId)
     });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+  }));
 
-// Side-by-side comparison payload
-router.post('/compare-alternatives', (req, res) => {
-  try {
-    const { alternatives, disruptionId } = req.body;
-    const disruption = disruptionService.getDisruptionById(disruptionId);
-    const comparison = alternativeComparator.compareAlternatives(alternatives, disruption || { id: disruptionId });
-
-    res.json({ success: true, comparison });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Human Administrator Approval
-router.post('/approve', (req, res) => {
-  try {
-    const { alternative, disruptionId, approvedBy, approvalNotes } = req.body;
-
-    const result = approvalService.approveAlternative({
-      alternative,
-      disruptionId,
-      approvedBy: approvedBy || 'System Admin',
-      approvalNotes
-    });
-
-    res.json({
-      success: true,
-      ...result
-    });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
-  }
-});
-
-// Get active timetable and version history
-router.get('/versions', (req, res) => {
-  try {
-    const versions = versionService.getVersionHistory();
-    const activeVersion = versionService.getActiveVersion();
+  // Active timetable (scoped to the caller) and, for administrators, the version history.
+  router.get('/versions', asyncHandler(async (req, res) => {
+    const isAdmin = ADMIN_ROLES.includes(req.user.role);
+    const { activeVersion, versions } = await adaptiveService.getVersionOverview({ withMetrics: isAdmin });
+    const visible = { ...activeVersion, entries: scopeEntriesForUser(activeVersion.entries, req.user) };
 
     res.json({
       success: true,
       activeVersionId: activeVersion.id,
-      activeVersion,
-      count: versions.length,
-      versions
+      activeVersion: isAdmin ? visible : { ...visible, changeLog: undefined, approvedBy: undefined },
+      count: isAdmin ? versions.length : 1,
+      versions: isAdmin ? versions : [visible]
     });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+  }));
 
-// Get specific timetable version by ID
-router.get('/versions/:id', (req, res) => {
-  try {
-    const version = versionService.getVersionById(req.params.id);
-    if (!version) {
-      return res.status(404).json({ success: false, error: 'Version not found.' });
-    }
-    res.json({ success: true, version });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+  router.get('/versions/:id', auth.requireAdmin, asyncHandler(async (req, res) => {
+    res.json({ success: true, version: await adaptiveService.getVersion(validateIdParam(req.params.id)) });
+  }));
 
-// Rollback active timetable to target version ID
-router.post('/versions/:id/rollback', (req, res) => {
-  try {
-    const targetVersion = versionService.rollbackToVersion(req.params.id);
+  router.post('/versions/:id/rollback', auth.requireAdmin, asyncHandler(async (req, res) => {
+    const targetVersion = await adaptiveService.rollbackToVersion(validateIdParam(req.params.id));
     res.json({
       success: true,
       message: `Successfully rolled back to version ${targetVersion.versionNumber} (${targetVersion.name}).`,
       activeVersion: targetVersion
     });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
-  }
-});
+  }));
 
-// Helper endpoint: Get System Metadata (Faculty, Rooms, Sections, Subjects, Slots)
-router.get('/metadata', (req, res) => {
-  try {
-    res.json({
-      success: true,
-      faculty: timetableRepository.faculty,
-      rooms: timetableRepository.rooms,
-      sections: timetableRepository.sections,
-      subjects: timetableRepository.subjects,
-      timeSlots: timetableRepository.timeSlots,
-      days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+  // Everything below changes or reveals planning data: administrators only.
+  router.post('/generate-alternatives', auth.requireAdmin, asyncHandler(async (req, res) => {
+    const { disruptionId } = req.body ?? {};
+    if (!disruptionId) throw new ValidationError('Disruption ID is required.');
 
-export default router;
+    const { impactResult, comparisonPayload } = await adaptiveService.generateAlternatives(disruptionId);
+    res.json({ success: true, impactResult, comparisonPayload });
+  }));
+
+  router.post('/compare-alternatives', auth.requireAdmin, asyncHandler(async (req, res) => {
+    const { disruptionId } = req.body ?? {};
+    if (!disruptionId) throw new ValidationError('Disruption ID is required.');
+    res.json({ success: true, comparison: await adaptiveService.compareAlternatives(disruptionId) });
+  }));
+
+  // Human administrator approval. The chosen alternative is rebuilt on the server.
+  router.post('/approve', auth.requireAdmin, asyncHandler(async (req, res) => {
+    const { disruptionId, alternativeId, approvalNotes } = req.body ?? {};
+    const result = await adaptiveService.approveAlternative({ disruptionId, alternativeId, approvalNotes }, req.user);
+    res.json({ success: true, ...result });
+  }));
+
+  router.get('/approvals', auth.requireAdmin, asyncHandler(async (req, res) => {
+    const approvals = await adaptiveService.listApprovalHistory();
+    res.json({ success: true, count: approvals.length, approvals });
+  }));
+
+  return router;
+}

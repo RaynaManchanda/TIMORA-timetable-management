@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { schedulingEngineAdapter } from '../src/adapters/scheduling-engine-adapter.js';
+import { FIXTURE_CONTEXT } from './support/fixtures.js';
 
 test('Hard Constraints - Detect Faculty Double-Booking', () => {
   const currentEntries = [
@@ -24,7 +25,7 @@ test('Hard Constraints - Detect Room Double-Booking', () => {
 
 test('Hard Constraints - Detect Room Suitability Conflict for Lab Subject', () => {
   // SUB_CS502 is DBMS Lab
-  const check = schedulingEngineAdapter.checkRoomSuitability('R202', 'SUB_CS502'); // R202 is CLASSROOM
+  const check = schedulingEngineAdapter.checkRoomSuitability('R202', 'SUB_CS502', FIXTURE_CONTEXT); // R202 is CLASSROOM
   assert.equal(check.isValid, false);
   assert.ok(check.conflict.includes('requires a LAB room'));
 });

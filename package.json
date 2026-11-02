@@ -1,16 +1,45 @@
 {
-  "name": "timora-rescheduling-ai",
+  "name": "timora",
   "version": "1.0.0",
-  "description": "TIMORA - Adaptive Scheduling / Rescheduling + AI Assistance Module",
+  "description": "TIMORA \u2014 Dynamic Academic Scheduling & Student-Day Optimization Platform",
   "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test tests/*.test.js"
+    "dev": "node --env-file=.env --watch server.js",
+    "db:up": "docker compose up -d --wait db",
+    "db:down": "docker compose stop db",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:import": "node --env-file=.env scripts/import-timetable.js",
+    "db:setup": "prisma generate && prisma migrate deploy && npm run db:import",
+    "user:create": "node --env-file=.env scripts/create-user.js",
+    "test": "npm run test:backend && npm run test:modules",
+    "test:backend": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:backend:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "test:modules": "node --test --test-concurrency=1 \"tests/*.test.js\" \"testcases/**/*.test.js\"",
+    "test:db:up": "docker compose -f docker-compose.test.yml up -d --wait",
+    "test:db:down": "docker compose -f docker-compose.test.yml down",
+    "test:rishank": "node --test testcases/rishank/rishank.testcases.test.js",
+    "test:rayna": "node --test testcases/rayna/rayna.testcases.test.js",
+    "test:rohit": "node --test testcases/rohit/rohit.testcases.test.js",
+    "test:raghav": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/backend",
+    "test:testcases": "node scripts/verify-testcases.mjs"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^6.19.3",
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
-    "express": "^4.19.2"
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.7.2",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.1",
+    "prisma": "^6.19.3"
   },
   "keywords": [
     "timetable",
@@ -20,5 +49,12 @@
     "timora"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^30.5.2",
+    "supertest": "^7.3.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
 }

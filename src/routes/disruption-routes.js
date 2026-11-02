@@ -1,69 +1,39 @@
 /**
  * TIMORA - Disruption Routes
- * API endpoints for disruption recording, listing, and impact analysis.
+ * Recording, listing and impact analysis of disruptions. Administrators only.
  */
 
 import express from 'express';
-import { disruptionService } from '../adaptive/disruption/disruption-service.js';
-import { impactAnalyzer } from '../adaptive/impact/impact-analyzer.js';
+import { asyncHandler } from '../utils/async-handler.js';
+import { validateIdParam } from '../validation/academic-validator.js';
 
-const router = express.Router();
+/**
+ * Disruption routes, mounted at /api/rescheduling/disruptions.
+ *
+ * @param {{ adaptiveService: object, auth: { authenticate: Function, requireAdmin: Function } }} dependencies Collaborators.
+ * @returns {import('express').Router}
+ */
+export function createDisruptionRoutes({ adaptiveService, auth }) {
+  const router = express.Router();
+  router.use(auth.authenticate, auth.requireAdmin);
 
-// Record a new disruption
-router.post('/', (req, res) => {
-  try {
-    const disruption = disruptionService.recordDisruption(req.body);
-    res.status(201).json({
-      success: true,
-      message: 'Disruption recorded successfully.',
-      disruption
-    });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
-  }
-});
+  router.post('/', asyncHandler(async (req, res) => {
+    const disruption = await adaptiveService.recordDisruption(req.body ?? {}, req.user);
+    res.status(201).json({ success: true, message: 'Disruption recorded successfully.', disruption });
+  }));
 
-// List all recorded disruptions
-router.get('/', (req, res) => {
-  try {
-    const disruptions = disruptionService.getAllDisruptions();
+  router.get('/', asyncHandler(async (req, res) => {
+    const disruptions = await adaptiveService.listDisruptions();
     res.json({ success: true, count: disruptions.length, disruptions });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+  }));
 
-// Get disruption by ID
-router.get('/:id', (req, res) => {
-  try {
-    const disruption = disruptionService.getDisruptionById(req.params.id);
-    if (!disruption) {
-      return res.status(404).json({ success: false, error: 'Disruption not found.' });
-    }
-    res.json({ success: true, disruption });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+  router.get('/:id', asyncHandler(async (req, res) => {
+    res.json({ success: true, disruption: await adaptiveService.getDisruption(validateIdParam(req.params.id)) });
+  }));
 
-// Run targeted impact analysis for a disruption
-router.post('/:id/analyze', (req, res) => {
-  try {
-    const disruption = disruptionService.getDisruptionById(req.params.id);
-    if (!disruption) {
-      return res.status(404).json({ success: false, error: 'Disruption not found.' });
-    }
+  router.post('/:id/analyze', asyncHandler(async (req, res) => {
+    res.json({ success: true, impactResult: await adaptiveService.analyzeDisruption(validateIdParam(req.params.id)) });
+  }));
 
-    const impactResult = impactAnalyzer.analyzeImpact(disruption);
-    disruptionService.updateDisruptionStatus(disruption.id, 'ANALYZED');
-
-    res.json({
-      success: true,
-      impactResult
-    });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
-  }
-});
-
-export default router;
+  return router;
+}

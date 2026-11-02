@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#12161d">
+  <title>TIMORA — Dynamic Academic Scheduling & Student-Day Optimization</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app" class="app-layout">
+    
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-logo">T</div>
+          <div class="brand-text">
+            <h1 class="brand-name">TIMORA</h1>
+            <p class="brand-sub">Academic Scheduling Platform</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">MAIN NAVIGATION</div>
+        <a href="#dashboard" class="nav-item active" data-page="dashboard" data-roles="COORDINATOR,ADMIN">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <span>Dashboard</span>
+        </a>
+
+        <a href="#timetable" class="nav-item" data-page="timetable" data-roles="COORDINATOR,ADMIN,FACULTY,STUDENT">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span>Timetable</span>
+        </a>
+
+        <a href="#generate" class="nav-item" data-page="generate" data-roles="COORDINATOR,ADMIN">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span>Generate Timetable</span>
+        </a>
+
+        <a href="#disruptions" class="nav-item" data-page="disruptions" data-roles="COORDINATOR,ADMIN">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>Disruptions & Rescheduling</span>
+        </a>
+
+        <a href="#academic-data" class="nav-item" data-page="academic-data" data-roles="COORDINATOR,ADMIN">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <span>Academic Data</span>
+        </a>
+
+        <a href="#analytics" class="nav-item" data-page="analytics" data-roles="COORDINATOR,ADMIN">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span>Versions & Analytics</span>
+        </a>
+
+        <a href="#ai-assistant" class="nav-item" data-page="ai-assistant" data-roles="COORDINATOR,ADMIN">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/><path d="M8 12h.01"/><path d="M16 12h.01"/></svg>
+          <span>AI Constraint Assistant</span>
+        </a>
+
+        <a href="#notifications" class="nav-item" data-page="notifications" data-roles="COORDINATOR,ADMIN,FACULTY,STUDENT">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span>Notifications</span>
+          <span id="nav-notif-badge" class="badge-count">0</span>
+        </a>
+
+        <a href="#settings" class="nav-item" data-page="settings" data-roles="COORDINATOR,ADMIN,FACULTY,STUDENT">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Settings</span>
+        </a>
+      </nav>
+
+      <!-- User Profile & Sign Out Footer -->
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar" id="current-user-avatar">C</div>
+          <div class="user-info">
+            <span class="user-name" id="current-user-name">Coordinator</span>
+            <span class="user-role-badge" id="current-user-role">COORDINATOR</span>
+          </div>
+        </div>
+        <button id="btn-change-password" class="btn-signout" title="Change password" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>Change password</span>
+        </button>
+        <button id="btn-signout" class="btn-signout" title="Sign out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span>Sign out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Dims the page behind the navigation drawer on small screens -->
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main Content Container -->
+    <main class="main-content">
+      
+      <!-- Top Header Bar -->
+      <header class="top-header">
+        <div class="header-leading">
+          <button id="btn-nav-toggle" class="nav-toggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+          </button>
+          <div class="header-titles">
+            <h2 id="page-title" class="page-title">Dashboard</h2>
+            <p id="page-subtitle" class="page-subtitle">Dynamic Academic Scheduling & Student-Day Optimization</p>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <div class="system-status-pill">
+            <span class="status-dot"></span>
+            <span id="header-db-status">Active Version: <strong id="header-active-version">v1.0</strong></span>
+          </div>
+          <button id="header-btn-quick-sync" class="btn btn-secondary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            <span class="btn-label">Sync Calendar</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Views Container -->
+      <div class="content-body">
+        
+        <!-- ================================================================== -->
+        <!-- 1. DASHBOARD VIEW (TC02) -->
+        <!-- ================================================================== -->
+        <section id="view-dashboard" class="page-view active">
+          <!-- Summary Metric Cards -->
+          <div class="metrics-grid">
+            <div class="card metric-card">
+              <div class="metric-label">Quality Score</div>
+              <div class="metric-value-row">
+                <span class="metric-value" id="dash-quality-score">-</span>
+                <span class="metric-unit">/ 100</span>
+              </div>
+              <div class="metric-subtext positive">Ergonomics compliant</div>
+            </div>
+
+            <div class="card metric-card">
+              <div class="metric-label">Avoidable Gaps</div>
+              <div class="metric-value-row">
+                <span class="metric-value" id="dash-avoidable-gaps">-</span>
+                <span class="metric-unit">periods</span>
+              </div>
+              <div class="metric-subtext muted">Student idle gap target &le; 5</div>
+            </div>
+
+            <div class="card metric-card">
+              <div class="metric-label">Scheduled Classes</div>
+              <div class="metric-value-row">
+                <span class="metric-value" id="dash-scheduled-classes">-</span>
+                <span class="metric-unit">classes</span>
+              </div>
+              <div class="metric-subtext positive">100% hard-constraint valid</div>
+            </div>
+
+            <div class="card metric-card">
+              <div class="metric-label">Open Disruptions</div>
+              <div class="metric-value-row">
+                <span class="metric-value text-amber" id="dash-open-disruptions">-</span>
+                <span class="metric-unit">pending</span>
+              </div>
+              <div class="metric-subtext amber">Action required</div>
+            </div>
+          </div>
+
+          <!-- Two Column Activity Grid -->
+          <div class="grid-two-col mt-4">
+            <!-- Needs Attention Table -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Needs Attention</h3>
+                <span class="badge badge-warning" id="needs-attention-badge">1 Pending</span>
+              </div>
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Event / Issue</th>
+                      <th>Affected Entity</th>
+                      <th>Time / Day</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="needs-attention-tbody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Recent Activity Table -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Recent Activity</h3>
+                <button class="btn btn-ghost btn-sm" id="btn-refresh-activity">Refresh</button>
+              </div>
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Activity</th>
+                      <th>Details</th>
+                      <th>User</th>
+                      <th>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recent-activity-tbody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================== -->
+        <!-- 2. TIMETABLE VIEW (TC03, TC04, TC05, TC06, TC18) -->
+        <!-- ================================================================== -->
+        <section id="view-timetable" class="page-view">
+          <div class="toolbar-card card">
+            <div class="toolbar-controls">
+              <div class="control-group">
+                <label for="tt-filter-section">Section:</label>
+                <select id="tt-filter-section" class="form-select">
+                  <!-- Filled from the sections in the database -->
+                </select>
+              </div>
+
+              <div class="control-group">
+                <label for="tt-view-selector">View:</label>
+                <select id="tt-view-selector" class="form-select">
+                  <option value="WEEK" selected>Week</option>
+                  <option value="TODAY">Today</option>
+                </select>
+              </div>
+
+              <div class="control-group" id="tt-day-group" style="display: none;">
+                <label for="tt-filter-day">Day:</label>
+                <select id="tt-filter-day" class="form-select">
+                  <option value="Monday">Monday</option>
+                  <option value="Tuesday">Tuesday</option>
+                  <option value="Wednesday">Wednesday</option>
+                  <option value="Thursday">Thursday</option>
+                  <option value="Friday">Friday</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="toolbar-actions">
+              <button id="btn-print-timetable" class="btn btn-secondary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Print
+              </button>
+              <button id="btn-sync-gcal" class="btn btn-primary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                Sync to Google Calendar
+              </button>
+            </div>
+          </div>
+
+          <!-- Legend for the reserved blocks and parallel classes -->
+          <div class="tt-legend mt-3" id="tt-legend" aria-label="Legend">
+            <span class="tt-legend-item"><i class="tt-swatch tt-swatch-lab"></i> Lab / practical</span>
+            <span class="tt-legend-item"><i class="tt-swatch tt-swatch-elective"></i> Elective (pick one of the parallel classes)</span>
+            <span class="tt-legend-item"><i class="tt-swatch tt-swatch-combined"></i> Combined class with other sections</span>
+            <span class="tt-legend-item"><i class="tt-swatch tt-swatch-block"></i> Lunch, mentoring, minor programme</span>
+          </div>
+
+          <!-- Weekly Timetable Matrix -->
+          <div class="card timetable-matrix-card mt-3">
+            <div id="timetable-matrix-container" class="timetable-matrix-container">
+              <!-- Dynamically generated timetable grid -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================== -->
+        <!-- 3. GENERATE TIMETABLE VIEW (TC12, TC13, TC14) -->
+        <!-- ================================================================== -->
+        <section id="view-generate" class="page-view">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Timetable Generation Engine</h3>
+              <p class="card-subtitle">Generate optimized, conflict-free schedules using credit requirements and student-day ergonomics.</p>
+            </div>
+
+            <form id="form-generate-timetable" class="generation-form">
+              <div class="form-row">
+                <div class="form-group col-4">
+                  <label for="gen-section-select">Target Cohort / Section</label>
+                  <select id="gen-section-select" class="form-select">
+                    <option value="">All Active Sections</option>
+                  </select>
+                </div>
+
+                <div class="form-group col-4">
+                  <label for="gen-max-gap">Maximum Gap (hours)</label>
+                  <input type="number" id="gen-max-gap" class="form-input" min="1" max="4" value="2">
+                </div>
+
+                <div class="form-group col-4">
+                  <label for="gen-mandatory-break">Mandatory Lunch Break</label>
+                  <select id="gen-mandatory-break" class="form-select">
+                    <option value="true" selected>Protected (one free hour between 12:00 and 15:00, or the section lunch hour)</option>
+                    <option value="false">Flexible</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-actions mt-3">
+                <button type="submit" id="btn-run-generation" class="btn btn-primary">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                  Generate Timetable
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Generation Result Preview Card (Initially hidden) -->
+          <div id="generation-results-card" class="card mt-4" style="display: none;">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Generated Timetable Candidate</h3>
+                <span class="badge badge-success" id="gen-status-badge">OPTIMAL</span>
+              </div>
+              <div class="action-buttons">
+                <button id="btn-approve-publish" class="btn btn-success">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  Approve and publish
+                </button>
+                <button id="btn-reject-draft" class="btn btn-danger btn-outline">
+                  Reject
+                </button>
+              </div>
+            </div>
+
+            <!-- Quality Indicators Strip (TC13) -->
+            <div class="quality-indicators-grid">
+              <div class="indicator-box">
+                <span class="indicator-title">Quality score</span>
+                <span class="indicator-value" id="gen-quality-score">80</span>
+              </div>
+              <div class="indicator-box">
+                <span class="indicator-title">Avoidable gaps</span>
+                <span class="indicator-value" id="gen-avoidable-gaps">4</span>
+              </div>
+              <div class="indicator-box">
+                <span class="indicator-title">Hard-constraint conflicts</span>
+                <span class="indicator-value text-emerald" id="gen-conflicts">0</span>
+              </div>
+              <div class="indicator-box">
+                <span class="indicator-title">Longest day</span>
+                <span class="indicator-value" id="gen-longest-day">8 h</span>
+              </div>
+            </div>
+
+            <!-- Preview Grid -->
+            <div id="gen-preview-grid-container" class="mt-4">
+              <!-- Dynamically rendered -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================== -->
+        <!-- 4. DISRUPTIONS & RESCHEDULING VIEW (TC09, TC10, TC11) -->
+        <!-- ================================================================== -->
+        <section id="view-disruptions" class="page-view">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Report & Analyze Disruption</h3>
+              <p class="card-subtitle">Input sudden scheduling constraints, room maintenance, or faculty leaves.</p>
+            </div>
+
+            <form id="form-disruption-entry" class="disruption-form">
+              <div class="form-row">
+                <div class="form-group col-3">
+                  <label for="dis-type">Disruption Type</label>
+                  <select id="dis-type" class="form-select">
+                    <option value="FACULTY_ABSENCE">Faculty absence</option>
+                    <option value="CLASS_CANCELLATION">Section's classes cancelled</option>
+                    <option value="ROOM_UNAVAILABILITY">Room unavailable</option>
+                    <option value="HOLIDAY">Holiday / institutional event (all sections)</option>
+                    <option value="SWAP_REQUEST">Faculty swap request</option>
+                  </select>
+                </div>
+
+                <div class="form-group col-3">
+                  <label for="dis-faculty" id="dis-entity-label">Affected Faculty</label>
+                  <select id="dis-faculty" class="form-select">
+                    <!-- Loaded dynamically -->
+                  </select>
+                </div>
+
+                <div class="form-group col-3">
+                  <label for="dis-day">Day of Week</label>
+                  <select id="dis-day" class="form-select">
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday" selected>Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option>
+                  </select>
+                </div>
+
+                <div class="form-group col-3">
+                  <label for="dis-slot">Time Slot</label>
+                  <select id="dis-slot" class="form-select">
+                    <option value="">Full Day</option>
+                    <!-- Teaching hours are filled from the database -->
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group mt-2">
+                <label for="dis-reason">Reason / Notes</label>
+                <input type="text" id="dis-reason" class="form-input" value="Medical emergency leave" maxlength="500">
+              </div>
+
+              <div class="form-actions mt-3">
+                <button type="submit" id="btn-analyze-impact" class="btn btn-primary">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  Analyze impact
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Impact Analysis & Alternatives Container -->
+          <div id="disruption-impact-section" class="mt-4" style="display: none;">
+            
+            <!-- Affected Classes Card -->
+            <div class="card mb-4">
+              <div class="card-header">
+                <h3 class="card-title">Impact Analysis Results</h3>
+                <span class="badge badge-warning" id="affected-classes-count-badge">1 Affected Class</span>
+              </div>
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Status</th>
+                      <th>Section</th>
+                      <th>Subject</th>
+                      <th>Faculty</th>
+                      <th>Room</th>
+                      <th>Scheduled Slot</th>
+                    </tr>
+                  </thead>
+                  <tbody id="affected-classes-tbody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Alternative Rescheduling Options (TC10, TC11) -->
+            <div class="alternatives-header-row mb-3">
+              <div>
+                <h3 class="section-heading">Rescheduling Alternatives</h3>
+                <p class="card-subtitle">Ranked by composite score (disruption penalty + student-day ergonomics).</p>
+              </div>
+              <button id="btn-approve-selected-alternative" class="btn btn-success" disabled>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Approve selected
+              </button>
+            </div>
+
+            <div id="alternatives-grid" class="alternatives-grid">
+              <!-- Dynamically populated alternative cards -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================== -->
+        <!-- 5. ACADEMIC DATA MANAGEMENT (TC07, TC08) -->
+        <!-- ================================================================== -->
+        <section id="view-academic-data" class="page-view">
+          <div class="card">
+            <!-- Tabs Header -->
+            <div class="tabs-header">
+              <button class="tab-btn active" data-tab="subjects">Subjects</button>
+              <button class="tab-btn" data-tab="faculty">Faculty</button>
+              <button class="tab-btn" data-tab="rooms">Rooms</button>
+              <button class="tab-btn" data-tab="sections">Sections</button>
+              
+              <div class="tabs-actions">
+                <button id="btn-open-add-record-modal" class="btn btn-primary btn-sm">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Add record
+                </button>
+              </div>
+            </div>
+
+            <!-- Tab Content: Subjects -->
+            <div id="tab-content-subjects" class="tab-pane active">
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Subject Code</th>
+                      <th>Subject Name</th>
+                      <th>Type</th>
+                      <th>Weekly Hours</th>
+                      <th>Credits</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="subjects-table-body">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Tab Content: Faculty -->
+            <div id="tab-content-faculty" class="tab-pane">
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Faculty ID</th>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Department</th>
+                      <th>Max Hours/Wk</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="faculty-table-body">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Tab Content: Rooms -->
+            <div id="tab-content-rooms" class="tab-pane">
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Room ID</th>
+                      <th>Name</th>
+                      <th>Building</th>
+                      <th>Capacity</th>
+                      <th>Type</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rooms-table-body">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Tab Content: Sections -->
+            <div id="tab-content-sections" class="tab-pane">
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Section ID</th>
+                      <th>Section Name</th>
+                      <th>Program</th>
+                      <th>Semester</th>
+                      <th>Student Count</th>
+                    </tr>
+                  </thead>
+                  <tbody id="sections-table-body">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================== -->
+        <!-- 6. VERSIONS & ANALYTICS VIEW (TC15, TC16) -->
+        <!-- ================================================================== -->
+        <section id="view-analytics" class="page-view">
+          <!-- Analytics Metrics Grid -->
+          <div class="metrics-grid mb-4">
+            <div class="card metric-card">
+              <div class="metric-label">Average Gap Time</div>
+              <div class="metric-value-row">
+                <span class="metric-value" id="ana-avg-gap">-</span>
+                <span class="metric-unit">h</span>
+              </div>
+              <div class="metric-subtext muted" id="ana-avg-gap-note">Per student day</div>
+            </div>
+
+            <div class="card metric-card">
+              <div class="metric-label">Room Utilization</div>
+              <div class="metric-value-row">
+                <span class="metric-value" id="ana-room-util">-</span>
+              </div>
+              <div class="metric-subtext muted">Share of room-hours in use</div>
+            </div>
+
+            <div class="card metric-card">
+              <div class="metric-label">Faculty Workload</div>
+              <div class="metric-value-row">
+                <span class="metric-value" id="ana-fac-workload">-</span>
+                <span class="metric-unit">h/week</span>
+              </div>
+              <div class="metric-subtext muted">Average per teaching faculty member</div>
+            </div>
+
+            <div class="card metric-card">
+              <div class="metric-label">Schedule Stability</div>
+              <div class="metric-value-row">
+                <span class="metric-value text-emerald" id="ana-stability">-</span>
+              </div>
+              <div class="metric-subtext muted">Classes unchanged from the previous version</div>
+            </div>
+          </div>
+
+          <!-- Versions History Table -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Timetable Versions & Approval Audit</h3>
+              <span class="card-subtitle">Immutable version snapshots with one-click rollback.</span>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Version</th>
+                    <th>Name / Reason</th>
+                    <th>Status</th>
+                    <th>Quality Score</th>
+                    <th>Approved By</th>
+                    <th>Created At</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="versions-tbody">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================== -->
+        <!-- 7. AI CONSTRAINT ASSISTANT VIEW -->
+        <!-- ================================================================== -->
+        <section id="view-ai-assistant" class="page-view">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Natural Language Scheduling Assistant</h3>
+              <p class="card-subtitle">Type natural scheduling instructions. Constraints are parsed and awaiting human admin validation before execution.</p>
+            </div>
+
+            <div class="ai-input-box">
+              <textarea id="ai-prompt-input" class="form-textarea" rows="3" placeholder="e.g. Dr. Turing is unavailable on Tuesday between 10 to 12. Please adjust."></textarea>
+              <div class="ai-quick-prompts mt-2">
+                <span class="quick-chip" data-prompt="Dr. Turing is absent on Tuesday between 10 to 12">Dr. Turing absent Tuesday 10-12</span>
+                <span class="quick-chip" data-prompt="Prof. Hopper is sick on Wednesday S2">Prof. Hopper sick Wednesday S2</span>
+                <span class="quick-chip" data-prompt="Cancel DBMS Lab on Tuesday S3">Cancel DBMS Lab Tuesday S3</span>
+              </div>
+              <div class="form-actions mt-3">
+                <button id="btn-interpret-prompt" class="btn btn-primary">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Interpret Constraint
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Interpreted Result Box (Awaiting Human Validation) -->
+          <div id="ai-validation-container" class="card mt-4" style="display: none;">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Interpreted Constraint Preview</h3>
+                <span class="badge badge-warning" id="ai-status-badge">AWAITING HUMAN VALIDATION</span>
+              </div>
+            </div>
+
+            <div class="interpreted-details" id="ai-interpreted-content">
+              <!-- Dynamically populated -->
+            </div>
+
+            <div class="admin-validation-box mt-3 p-3 bg-light rounded">
+              <h4 class="subheading">Human Administrator Verification</h4>
+              <p class="small text-muted">Verify or correct the parameters below before passing to the rescheduling engine.</p>
+              <div class="form-row mt-2">
+                <div class="form-group col-4">
+                  <label for="ai-val-day">Verified Day</label>
+                  <input type="text" id="ai-val-day" class="form-input">
+                </div>
+                <div class="form-group col-4">
+                  <label for="ai-val-slot">Verified Slot</label>
+                  <input type="text" id="ai-val-slot" class="form-input">
+                </div>
+                <div class="form-group col-4">
+                  <label for="ai-val-entity">Verified Faculty / Entity ID</label>
+                  <input type="text" id="ai-val-entity" class="form-input">
+                </div>
+              </div>
+              <div class="form-actions mt-3">
+                <button id="btn-confirm-validate-ai" class="btn btn-success">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  Validate & Execute Reschedule
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================== -->
+        <!-- 8. NOTIFICATIONS VIEW (TC14, TC15) -->
+        <!-- ================================================================== -->
+        <section id="view-notifications" class="page-view">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Schedule Update Notifications</h3>
+              <button id="btn-mark-all-read" class="btn btn-secondary btn-sm">Mark all as read</button>
+            </div>
+            <div id="notifications-list" class="notifications-list">
+              <!-- Dynamically populated notifications -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================== -->
+        <!-- SETTINGS VIEW: Google Calendar connection and account -->
+        <!-- ================================================================== -->
+        <section id="view-settings" class="page-view">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Google Calendar</h3>
+              <span id="gcal-status-badge" class="badge badge-neutral">Checking...</span>
+            </div>
+            <div class="settings-body">
+              <p class="text-muted">Connect your Google account to copy your timetable into your Google Calendar as weekly recurring events (Asia/Kolkata). Syncing again updates the same events instead of duplicating them.</p>
+              <div id="gcal-not-configured" class="form-error" style="display: none;"></div>
+              <dl class="settings-facts">
+                <div><dt>Google account</dt><dd id="gcal-account">Not connected</dd></div>
+                <div><dt>Last synced</dt><dd id="gcal-last-synced">Never</dd></div>
+                <div><dt>Events</dt><dd id="gcal-events-count">0</dd></div>
+              </dl>
+              <div id="gcal-section-row" class="form-group" style="display: none;">
+                <label for="gcal-section">Section to sync</label>
+                <select id="gcal-section" class="form-select"></select>
+                <small class="text-muted">As a coordinator you have no section of your own, so choose which section's timetable goes to your calendar.</small>
+              </div>
+              <div class="settings-actions">
+                <button type="button" id="btn-gcal-connect" class="btn btn-primary">Connect Google Calendar</button>
+                <button type="button" id="btn-gcal-sync" class="btn btn-secondary">Sync now</button>
+                <button type="button" id="btn-gcal-disconnect" class="btn btn-ghost">Disconnect</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="electives-card" class="card mt-3" style="display: none;">
+            <div class="card-header">
+              <h3 class="card-title">My electives</h3>
+            </div>
+            <div class="settings-body">
+              <p class="text-muted">Each slot offers several elective classes in parallel, but you attend only one. Tick the ones you are enrolled in: only these (plus your section's regular classes) are copied to your Google Calendar.</p>
+              <div id="electives-options" class="settings-checks"></div>
+              <div class="settings-actions mt-2">
+                <button type="button" id="btn-save-electives" class="btn btn-primary">Save electives</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card mt-3">
+            <div class="card-header">
+              <h3 class="card-title">Account</h3>
+            </div>
+            <div class="settings-body">
+              <dl class="settings-facts">
+                <div><dt>Name</dt><dd id="settings-name"></dd></div>
+                <div><dt>Email</dt><dd id="settings-email"></dd></div>
+                <div><dt>Role</dt><dd id="settings-role"></dd></div>
+              </dl>
+              <div class="settings-actions">
+                <button type="button" id="btn-settings-password" class="btn btn-secondary">Change password</button>
+                <button type="button" id="btn-settings-logout-all" class="btn btn-ghost">Sign out of all devices</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODALS -->
+  <!-- ==================================================================== -->
+
+  <!-- 1. Authentication screens: sign in and create account -->
+  <div id="signin-modal" class="auth-screen" role="dialog" aria-modal="true" aria-labelledby="auth-heading">
+
+    <aside class="auth-hero" aria-hidden="true">
+      <div class="brand">
+        <div class="brand-logo">T</div>
+        <div class="brand-text">
+          <span class="brand-name">TIMORA</span>
+          <p class="brand-sub">Academic Scheduling Platform</p>
+        </div>
+      </div>
+
+      <div class="auth-hero-copy">
+        <h2>Timetables that adapt to the student's day.</h2>
+        <ul class="auth-hero-points">
+          <li>Conflict-free schedules generated in seconds</li>
+          <li>Instant rescheduling when classes change</li>
+          <li>Updates delivered to students and faculty</li>
+        </ul>
+      </div>
+    </aside>
+
+    <main class="auth-panel">
+      <div class="auth-card">
+
+        <div class="brand auth-brand-compact">
+          <div class="brand-logo">T</div>
+          <span class="brand-name">TIMORA</span>
+        </div>
+
+        <div id="auth-notice" class="auth-notice" role="status" hidden></div>
+
+        <!-- Sign in -->
+        <section id="auth-view-login" data-auth-view="login">
+          <h1 id="auth-heading" class="auth-title">Welcome back</h1>
+          <p class="auth-lead">Sign in to manage and view your timetable.</p>
+
+          <div id="login-error" class="form-alert" role="alert" hidden></div>
+
+          <form id="form-signin" class="auth-form" novalidate>
+            <div class="form-group">
+              <label for="signin-email">Email address</label>
+              <input type="email" id="signin-email" name="email" class="form-input" autocomplete="username" inputmode="email" placeholder="you@university.edu" aria-describedby="signin-email-error" required>
+              <p id="signin-email-error" class="field-error" hidden></p>
+            </div>
+
+            <div class="form-group">
+              <label for="signin-password">Password</label>
+              <div class="password-field">
+                <input type="password" id="signin-password" name="password" class="form-input" autocomplete="current-password" placeholder="Enter your password" aria-describedby="signin-password-error" required>
+                <button type="button" class="password-toggle" data-toggle-password="signin-password" aria-label="Show password">Show</button>
+              </div>
+              <p id="signin-password-error" class="field-error" hidden></p>
+            </div>
+
+            <button type="submit" id="btn-submit-signin" class="btn btn-primary btn-block btn-lg">
+              <span class="btn-spinner" aria-hidden="true"></span>
+              <span class="btn-text">Sign in</span>
+            </button>
+          </form>
+
+          <p class="auth-switch">
+            New to TIMORA?
+            <button type="button" class="link-button" data-auth-switch="signup">Create an account</button>
+          </p>
+
+          <details id="demo-accounts" class="demo-accounts" hidden>
+            <summary>Use a demo account</summary>
+            <div class="demo-chips">
+              <button type="button" class="quick-chip" data-demo-email="admin@timora.edu">Coordinator</button>
+              <button type="button" class="quick-chip" data-demo-email="faculty@timora.edu">Faculty</button>
+              <button type="button" class="quick-chip" data-demo-email="student@timora.edu">Student</button>
+            </div>
+            <p class="small text-muted">Fills the form. The demo password is Password123!</p>
+          </details>
+        </section>
+
+        <!-- Create account -->
+        <section id="auth-view-signup" data-auth-view="signup" hidden>
+          <h1 class="auth-title">Create your account</h1>
+          <p class="auth-lead">Join TIMORA to see your timetable and get schedule updates.</p>
+
+          <div id="signup-error" class="form-alert" role="alert" hidden></div>
+
+          <form id="form-signup" class="auth-form" novalidate>
+            <fieldset class="role-choice">
+              <legend>I am a</legend>
+              <label class="role-option">
+                <input type="radio" name="signup-role" value="STUDENT" checked>
+                <span class="role-option-body">
+                  <span class="role-title">Student</span>
+                  <span class="role-desc">View my section's timetable</span>
+                </span>
+              </label>
+              <label class="role-option">
+                <input type="radio" name="signup-role" value="FACULTY">
+                <span class="role-option-body">
+                  <span class="role-title">Faculty</span>
+                  <span class="role-desc">View my teaching schedule</span>
+                </span>
+              </label>
+            </fieldset>
+
+            <div class="form-group">
+              <label for="signup-name">Full name</label>
+              <input type="text" id="signup-name" name="name" class="form-input" autocomplete="name" placeholder="Asha Verma" aria-describedby="signup-name-error" required>
+              <p id="signup-name-error" class="field-error" hidden></p>
+            </div>
+
+            <div class="form-group">
+              <label for="signup-email">University email</label>
+              <input type="email" id="signup-email" name="email" class="form-input" autocomplete="email" inputmode="email" placeholder="you@university.edu" aria-describedby="signup-email-error" required>
+              <p id="signup-email-error" class="field-error" hidden></p>
+            </div>
+
+            <div class="form-group" id="signup-section-group">
+              <label for="signup-section">Section</label>
+              <select id="signup-section" name="sectionId" class="form-select" aria-describedby="signup-section-error">
+                <option value="">Loading sections...</option>
+              </select>
+              <p id="signup-section-error" class="field-error" hidden></p>
+            </div>
+
+            <div class="form-group" id="signup-department-group" hidden>
+              <label for="signup-department">Department <span class="optional">(optional)</span></label>
+              <input type="text" id="signup-department" name="department" class="form-input" autocomplete="organization-title" placeholder="Computer Science">
+            </div>
+
+            <div class="form-group">
+              <label for="signup-password">Password</label>
+              <div class="password-field">
+                <input type="password" id="signup-password" name="password" class="form-input" autocomplete="new-password" placeholder="Create a password" aria-describedby="signup-password-rules signup-password-error" required>
+                <button type="button" class="password-toggle" data-toggle-password="signup-password" aria-label="Show password">Show</button>
+              </div>
+              <div class="strength-meter" aria-hidden="true"><span id="password-strength-bar"></span></div>
+              <ul id="signup-password-rules" class="password-rules">
+                <li data-rule="length">At least 8 characters</li>
+                <li data-rule="lower">A lowercase letter</li>
+                <li data-rule="upper">An uppercase letter</li>
+                <li data-rule="digit">A number</li>
+              </ul>
+              <p id="signup-password-error" class="field-error" hidden></p>
+            </div>
+
+            <div class="form-group">
+              <label for="signup-confirm">Confirm password</label>
+              <input type="password" id="signup-confirm" name="confirm" class="form-input" autocomplete="new-password" placeholder="Re-enter your password" aria-describedby="signup-confirm-error" required>
+              <p id="signup-confirm-error" class="field-error" hidden></p>
+            </div>
+
+            <button type="submit" id="btn-submit-signup" class="btn btn-primary btn-block btn-lg">
+              <span class="btn-spinner" aria-hidden="true"></span>
+              <span class="btn-text">Create account</span>
+            </button>
+          </form>
+
+          <p class="auth-switch">
+            Already have an account?
+            <button type="button" class="link-button" data-auth-switch="login">Sign in</button>
+          </p>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- 2. Add Academic Record Modal (TC08) -->
+  <div id="add-record-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="add-record-title">Add Academic Record</h3>
+        <button class="btn-close" id="btn-close-record-modal">&times;</button>
+      </div>
+
+      <form id="form-add-record">
+        <div class="modal-body" id="add-record-form-fields">
+          <!-- Dynamic form fields depending on active tab -->
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-add-record">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-record">Save Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. Google Calendar Sync Modal (TC06, TC16, TC17) -->
+  <div id="calendar-sync-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Google Calendar Synchronization</h3>
+        <button class="btn-close" id="btn-close-cal-modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div id="cal-sync-status-box" class="sync-status-box mb-3">
+          <div class="sync-icon-row">
+            <svg class="gcal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <div>
+              <h4 id="cal-sync-title">Calendar Sync Status</h4>
+              <p id="cal-sync-desc" class="text-muted">Converting timetable to weekly recurring calendar events in Asia/Kolkata timezone.</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="cal-events-preview" class="cal-events-preview">
+          <!-- Dynamically populated events preview -->
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-close-cal-done">Close</button>
+        <button type="button" class="btn btn-primary" id="btn-trigger-gcal-sync">
+          Trigger Live Sync
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Feedback Container -->
+  <!-- 4. Change Password Modal -->
+  <div id="password-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Change password</h3>
+        <button class="btn-close" id="btn-close-password-modal" type="button">&times;</button>
+      </div>
+      <form id="form-change-password" autocomplete="off">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="pw-current">Current password</label>
+            <input type="password" id="pw-current" class="form-input" autocomplete="current-password" maxlength="1024" required>
+          </div>
+          <div class="form-group mt-2">
+            <label for="pw-new">New password</label>
+            <input type="password" id="pw-new" class="form-input" autocomplete="new-password" minlength="8" maxlength="72" required>
+            <small class="text-muted">8-72 characters with an upper-case letter, a lower-case letter and a digit.</small>
+          </div>
+          <div class="form-group mt-2">
+            <label for="pw-confirm">Repeat new password</label>
+            <input type="password" id="pw-confirm" class="form-input" autocomplete="new-password" maxlength="72" required>
+          </div>
+          <label class="mt-2 small"><input type="checkbox" id="pw-everywhere" checked> Sign out of all other devices</label>
+          <p id="password-error" class="form-error" role="alert" style="display: none;"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-password">Cancel</button>
+          <button type="submit" class="btn btn-primary">Change password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- App Script -->
+  <script type="module" src="auth-screen.js"></script>
+  <script type="module" src="nav-drawer.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,21 @@
+# Isolated PostgreSQL 16 used only by the Jest suite.
+# Start with: npm run test:db:up    Stop with: npm run test:db:down
+# Data lives in tmpfs, so every start gives a clean database.
+
+services:
+  test-db:
+    image: postgres:16-alpine
+    container_name: timora-test-db
+    environment:
+      POSTGRES_DB: timora_test
+      POSTGRES_USER: timora_test
+      POSTGRES_PASSWORD: timora_test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U timora_test -d timora_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20

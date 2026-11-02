@@ -1,0 +1,930 @@
+{
+  "info": {
+    "name": "TIMORA - Backend test cases (Raghav Yadav, TC01-TC19)",
+    "description": "Manual endpoint verification for the backend test document. Needs a running API with SEED_DEMO_DATA=true (admin@timora.edu / student@timora.edu / Password123!). Run the folders in order (Collection Runner). TC13 (transaction rollback) and TC20 (load) are database/k6 tests: see tests/backend and tests/load.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "password",
+      "value": "Password123!"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Setup",
+      "item": [
+        {
+          "name": "Sign in as administrator",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('runId', String(Date.now()).slice(-8));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('administrator signed in', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@timora.edu\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "Sign in as demo student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('student signed in', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('studentToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@timora.edu\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "Create isolated fixtures (section, subject, faculty, room)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('section created', () => pm.response.to.have.status(201));",
+                  "const h = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pm.collectionVariables.get('adminToken') };",
+                  "const id = pm.collectionVariables.get('runId');",
+                  "const post = (path, body) => new Promise((ok) => pm.sendRequest({ url: pm.variables.replaceIn('{{baseUrl}}') + path, method: 'POST', header: h, body: { mode: 'raw', raw: JSON.stringify(body) } }, (e, r) => ok(r)));",
+                  "post('/api/academic/subjects', { id: 'SUB_PM' + id, code: 'PM' + id, name: 'Postman subject' });",
+                  "post('/api/academic/faculty', { id: 'F_PM' + id, name: 'Postman Faculty', email: 'pm' + id + '@faculty.timora.invalid' });",
+                  "post('/api/academic/rooms', { id: 'R_PM' + id, name: 'PM Room ' + id, capacity: 60 });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"PM{{runId}}\",\n  \"name\": \"PM {{runId}}\",\n  \"studentCount\": 40,\n  \"semester\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/academic/sections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "academic",
+                "sections"
+              ],
+              "query": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication (TC01-TC05, TC19)",
+      "item": [
+        {
+          "name": "TC01 Register a new user with valid details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const u = pm.response.json().user;",
+                  "pm.test('role STUDENT', () => pm.expect(u.role).to.eql('STUDENT'));",
+                  "pm.test('no password or hash exposed', () => pm.expect(pm.response.text()).to.not.match(/password|hash|Str0ng-Pass/i));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Student\",\n  \"email\": \"pm.{{runId}}@timora.edu\",\n  \"password\": \"Str0ng-Pass\",\n  \"role\": \"STUDENT\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "TC02 Reject registration with a duplicate email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "pm.test('clear conflict message', () => pm.expect(pm.response.json().message).to.eql('An account with this email already exists.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Student\",\n  \"email\": \"pm.{{runId}}@timora.edu\",\n  \"password\": \"Str0ng-Pass\",\n  \"role\": \"STUDENT\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "TC03 Log in with valid credentials",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const payload = JSON.parse(atob(pm.response.json().token.split('.')[1]));",
+                  "pm.test('token has user id, role and 60 minute expiry', () => { pm.expect(payload.role).to.eql('STUDENT'); pm.expect(payload.exp - payload.iat).to.eql(3600); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"pm.{{runId}}@timora.edu\",\n  \"password\": \"Str0ng-Pass\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "TC04 Reject login with an incorrect password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('generic message, no token', () => { const b = pm.response.json(); pm.expect(b.message).to.eql('Invalid email or password.'); pm.expect(b.token).to.be.undefined; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"pm.{{runId}}@timora.edu\",\n  \"password\": \"Wrong-Pass1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "TC05 Passwords are stored hashed (see Jest: auth.test.js)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('the profile never carries a password or hash', () => pm.expect(pm.response.text()).to.not.match(/password|hash/i));",
+                  "// The bcrypt $2b$12$ check inspects the users table: automated in tests/backend/auth.test.js (TC05)."
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "TC19 Limit repeated failed logins (6 attempts)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Create the account first, then fail five times so the sixth call is the one under test.",
+                  "const base = pm.variables.replaceIn('{{baseUrl}}'), id = pm.collectionVariables.get('runId');",
+                  "const email = 'lockout.' + id + '@timora.edu';",
+                  "const post = (path, body) => new Promise((ok) => pm.sendRequest({ url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify(body) } }, (e, r) => ok(r)));",
+                  "(async () => { await post('/api/auth/register', { name: 'Lockout', email, password: 'Str0ng-Pass', role: 'STUDENT' }); for (let i = 0; i < 5; i++) await post('/api/auth/login', { email, password: 'Wrong-Pass1' }); })();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('attempt 6 returns HTTP 429', () => pm.response.to.have.status(429));",
+                  "pm.test('cooldown message', () => pm.expect(pm.response.json().message).to.eql('Too many login attempts. Please try again in 15 minutes.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"lockout.{{runId}}@timora.edu\",\n  \"password\": \"Wrong-Pass1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Access control (TC06-TC08, TC18)",
+      "item": [
+        {
+          "name": "TC06 Block a protected route without a token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('message', () => pm.expect(pm.response.json().message).to.eql('Authentication token is required.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/timetables",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "timetables"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "TC07 Reject a tampered token",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const [h, p, s] = pm.collectionVariables.get('studentToken').split('.');",
+                  "const body = JSON.parse(atob(p)); body.role = 'COORDINATOR';",
+                  "pm.collectionVariables.set('tamperedToken', [h, btoa(JSON.stringify(body)).replace(/=+$/, ''), s].join('.'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('message', () => pm.expect(pm.response.json().message).to.eql('Invalid authentication token.'));",
+                  "// The expired-token half of TC07 needs a clock in the past: automated in tests/backend/access-control.test.js."
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tamperedToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/timetables",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "timetables"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "TC08 Student is denied the administrator generation route",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('message', () => pm.expect(pm.response.json().message).to.eql('You do not have permission to perform this action.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/timetables/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "timetables",
+                "generate"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "TC18 SQL injection in the section parameter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400, invalid section format', () => { pm.response.to.have.status(400); });",
+                  "pm.test('no records exposed', () => pm.expect(pm.response.json().entries).to.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/timetables?section=CSE5'%20OR%20'1'%3D'1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "timetables"
+              ],
+              "query": [
+                {
+                  "key": "section",
+                  "value": "CSE5'%20OR%20'1'%3D'1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC18 SQL injection in the login email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401 (or 400), never a token', () => { pm.expect([400, 401]).to.include(pm.response.code); pm.expect(pm.response.json().token).to.be.undefined; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"' OR '1'='1\",\n  \"password\": \"Whatever1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Timetable API (TC09-TC12)",
+      "item": [
+        {
+          "name": "TC09 Create a timetable entry",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('generated id and submitted fields returned', () => { const e = pm.response.json().entry; pm.expect(e.id).to.be.a('string'); pm.expect(e).to.include({ sectionId: 'PM' + pm.collectionVariables.get('runId'), day: 'TUESDAY', slot: 'S2' }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": \"PM{{runId}}\",\n  \"subjectId\": \"SUB_PM{{runId}}\",\n  \"facultyId\": \"F_PM{{runId}}\",\n  \"roomId\": \"R_PM{{runId}}\",\n  \"day\": \"TUESDAY\",\n  \"slot\": \"S2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/timetables",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "timetables"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "TC10 Reject an entry with missing required fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('every missing field listed', () => pm.expect(pm.response.json().validationErrors).to.eql(['facultyId is required', 'slot is required']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": \"PM{{runId}}\",\n  \"subjectId\": \"SUB_PM{{runId}}\",\n  \"roomId\": \"R_PM{{runId}}\",\n  \"day\": \"TUESDAY\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/timetables",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "timetables"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "TC11 Fetch the timetable of a section and day",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('only that section and day, ordered by slot', () => { const list = pm.response.json().entries; pm.expect(list.length).to.be.above(0); list.forEach((e) => { pm.expect(e.sectionId).to.eql('PM' + pm.collectionVariables.get('runId')); pm.expect(e.day).to.eql('TUESDAY'); }); const slots = list.map((e) => Number(e.slot.slice(1))); pm.expect(slots).to.eql([...slots].sort((a, b) => a - b)); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/timetables?section=PM{{runId}}&day=TUESDAY",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "timetables"
+              ],
+              "query": [
+                {
+                  "key": "section",
+                  "value": "PM{{runId}}"
+                },
+                {
+                  "key": "day",
+                  "value": "TUESDAY"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC12 Prevent double booking of a room",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Use any existing section other than the one that already holds the room at TUESDAY S2.",
+                  "const base = pm.variables.replaceIn('{{baseUrl}}');",
+                  "pm.sendRequest({ url: base + '/api/academic/sections', method: 'GET' }, (e, r) => { const s = r.json().sections.find((x) => x.id !== 'PM' + pm.collectionVariables.get('runId')); if (s) pm.collectionVariables.set('otherSection', s.id); });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "pm.test('names the room and slot', () => pm.expect(pm.response.json().message).to.match(/is already booked for TUESDAY slot S2\\./));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sectionId\": \"SEC_CSE_5A\",\n  \"subjectId\": \"SUB_PM{{runId}}\",\n  \"facultyId\": \"F_PM{{runId}}\",\n  \"roomId\": \"R_PM{{runId}}\",\n  \"day\": \"TUESDAY\",\n  \"slot\": \"S2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/timetables",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "timetables"
+              ],
+              "query": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications (TC15) and health (TC20)",
+      "item": [
+        {
+          "name": "TC15 List the student own unread notifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('only notifications addressed to this user', () => { const me = pm.collectionVariables.get('studentToken'); pm.expect(pm.response.json().notifications.every((n) => n.status === 'UNREAD')).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?status=UNREAD",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "UNREAD"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC20 Health check reports API and database UP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('API and database UP', () => { const b = pm.response.json(); pm.expect(b.api).to.eql('UP'); pm.expect(b.database).to.eql('UP'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ],
+              "query": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Calendar (TC16, TC17)",
+      "item": [
+        {
+          "name": "TC16/TC17 Calendar status of the student (sync itself: see Jest calendar.test.js)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('reports configuration and connection state', () => pm.expect(pm.response.json()).to.have.property('connected'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/calendar/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "calendar",
+                "status"
+              ],
+              "query": []
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

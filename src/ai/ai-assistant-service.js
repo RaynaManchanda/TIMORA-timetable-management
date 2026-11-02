@@ -13,12 +13,12 @@ class AIAssistantService {
   /**
    * Step 1: Interpret natural language prompt into structured constraint request.
    */
-  async interpretConstraint(promptText) {
+  async interpretConstraint(promptText, catalog) {
     if (!promptText || promptText.trim() === '') {
       throw new Error('Natural language prompt text is required.');
     }
 
-    const structuredConstraint = await this.provider.parseNaturalLanguage(promptText);
+    const structuredConstraint = await this.provider.parseNaturalLanguage(promptText, catalog);
 
     return {
       rawPrompt: promptText,

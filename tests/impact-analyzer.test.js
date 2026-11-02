@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { impactAnalyzer } from '../src/adaptive/impact/impact-analyzer.js';
 import { DISRUPTION_TYPES } from '../src/adaptive/disruption/disruption-model.js';
-import { timetableRepository } from '../src/repositories/timetable-repository.js';
+import { INITIAL_TIMETABLE_ENTRIES } from './support/fixtures.js';
 
 test('Impact Analyzer - Faculty Absence affects specific entries and preserves others', () => {
   const disruption = {
@@ -14,7 +14,7 @@ test('Impact Analyzer - Faculty Absence affects specific entries and preserves o
     slotId: 'S2'
   };
 
-  const activeEntries = timetableRepository.getActiveVersion().entries;
+  const activeEntries = INITIAL_TIMETABLE_ENTRIES;
   const result = impactAnalyzer.analyzeImpact(disruption, activeEntries);
 
   assert.ok(result.affectedCount > 0);
@@ -32,6 +32,31 @@ test('Impact Analyzer - Faculty Absence affects specific entries and preserves o
 
   // Check preserved entries properties
   result.preservedEntries.forEach(entry => {
+    assert.equal(entry.isPreserved, true);
+  });
+});
+
+test('Impact Analyzer - Preserves all entries when no timetable entries match the disruption', () => {
+  const disruption = {
+    id: 'DIS_TEST_NO_MATCH',
+    disruptionType: DISRUPTION_TYPES.FACULTY_ABSENCE,
+    affectedEntityType: 'FACULTY',
+    affectedEntityId: 'FACULTY_NOT_IN_TIMETABLE',
+    dayOfWeek: 'Tuesday',
+    slotId: 'S2'
+  };
+
+  const activeEntries = INITIAL_TIMETABLE_ENTRIES;
+  const result = impactAnalyzer.analyzeImpact(disruption, activeEntries);
+
+  assert.equal(result.affectedCount, 0);
+  assert.equal(result.preservedCount, activeEntries.length);
+  assert.equal(result.totalEntries, activeEntries.length);
+  assert.equal(result.affectedEntries.length, 0);
+  assert.equal(result.preservedEntries.length, activeEntries.length);
+
+  result.preservedEntries.forEach(entry => {
+    assert.equal(entry.isAffected, false);
     assert.equal(entry.isPreserved, true);
   });
 });

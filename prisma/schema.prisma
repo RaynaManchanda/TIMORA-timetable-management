@@ -1,0 +1,406 @@
+// TIMORA - Prisma schema (PostgreSQL 16)
+//
+// Migrations live in prisma/migrations. Some rules cannot be expressed in this file and are
+// created by hand-written SQL in the migrations (Prisma leaves them alone):
+//   * uq_single_active_version   - at most one ACTIVE timetable version
+//   * uq_section_core_slot       - a section has at most one non-elective class per slot
+//   * uq_room_day_slot_version   - a room hosts one class per slot (shared facilities excepted)
+//   * uq_faculty_day_slot_version- a teacher teaches one class per slot (project panels excepted)
+//   * trg_entry_room_exclusive   - keeps timetable_entries.room_exclusive in step with rooms.is_shared
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  COORDINATOR
+  FACULTY
+  STUDENT
+}
+
+enum RoomType {
+  CLASSROOM
+  LAB
+  SEMINAR_HALL
+}
+
+enum SubjectType {
+  LECTURE
+  LAB
+  TUTORIAL
+}
+
+/// How a class session is delivered. LAB sessions need a LAB room.
+enum SessionType {
+  LECTURE
+  LAB
+  TUTORIAL
+  PROJECT
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
+enum VersionStatus {
+  ACTIVE
+  ARCHIVED
+  DRAFT
+}
+
+/// Reserved, non-teaching time that scheduling must respect.
+enum BlockKind {
+  LUNCH
+  MENTORING
+  MINOR
+  INDUSTRY_EXPERT
+  OTHER
+}
+
+enum DisruptionStatus {
+  RECORDED
+  ANALYZED
+  RESOLVED
+  DISMISSED
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
+enum CalendarAuthStatus {
+  ACTIVE
+  REAUTH_REQUIRED
+  DISCONNECTED
+}
+
+// ---------------------------------------------------------------------------
+// Reference data
+// ---------------------------------------------------------------------------
+
+/// One hour of the teaching day, e.g. S1 = 09:00 - 10:00.
+model TimeSlot {
+  id         String @id @db.VarChar(8)
+  slotNumber Int    @unique @map("slot_number")
+  startTime  String @map("start_time") @db.VarChar(5)
+  endTime    String @map("end_time") @db.VarChar(5)
+  label      String @db.VarChar(32)
+
+  entries TimetableEntry[]
+  blocks  SectionBlock[]
+
+  @@map("time_slots")
+}
+
+model Section {
+  id           String   @id @db.VarChar(64)
+  name         String   @db.VarChar(128)
+  program      String   @db.VarChar(128)
+  semester     Int
+  studentCount Int      @map("student_count")
+  /// Admission batch, e.g. 2024.
+  batch        Int?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  users   User[]
+  entries TimetableEntry[]
+  blocks  SectionBlock[]
+
+  @@map("sections")
+}
+
+model Faculty {
+  id              String   @id @db.VarChar(64)
+  name            String   @db.VarChar(128)
+  email           String   @unique @db.VarChar(255)
+  department      String   @db.VarChar(128)
+  maxHoursPerWeek Int      @default(18) @map("max_hours_per_week")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  users   User[]
+  entries TimetableEntry[]
+
+  @@map("faculty")
+}
+
+model Room {
+  id        String   @id @db.VarChar(64)
+  name      String   @db.VarChar(128)
+  building  String   @db.VarChar(128)
+  capacity  Int
+  type      RoomType
+  /// A large facility (e.g. a workshop) where several classes can run at the same time.
+  isShared  Boolean  @default(false) @map("is_shared")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  entries TimetableEntry[]
+
+  @@map("rooms")
+}
+
+/// The elective subjects a student is enrolled in (a student attends one of the parallel electives).
+model UserElective {
+  userId    String @map("user_id") @db.VarChar(64)
+  subjectId String @map("subject_id") @db.VarChar(64)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([userId, subjectId])
+  @@map("user_electives")
+}
+
+model Subject {
+  id                   String      @id @db.VarChar(64)
+  code                 String      @unique @db.VarChar(32)
+  name                 String      @db.VarChar(255)
+  /// Short title used in the timetable grid, e.g. "COA".
+  abbreviation         String?     @db.VarChar(32)
+  department           String?     @db.VarChar(128)
+  type                 SubjectType
+  /// Course category from the college sheet, e.g. "Core", "Core Elective".
+  category             String?     @db.VarChar(64)
+  /// Lecture-Tutorial-Practical split as written by the college, e.g. "2-0-2".
+  ldp                  String?     @db.VarChar(16)
+  requiredHoursPerWeek Int         @default(3) @map("required_hours_per_week")
+  credits              Int         @default(3)
+  createdAt            DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  entries  TimetableEntry[]
+  enrolled UserElective[]
+
+  @@map("subjects")
+}
+
+// ---------------------------------------------------------------------------
+// Authentication
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String    @id @db.VarChar(64)
+  name         String    @db.VarChar(128)
+  email        String    @unique @db.VarChar(255)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  role         Role
+  department   String?   @db.VarChar(128)
+  sectionId    String?   @map("section_id") @db.VarChar(64)
+  facultyId    String?   @map("faculty_id") @db.VarChar(64)
+  /// Disabled accounts are rejected on every request, even with a valid token.
+  isActive     Boolean   @default(true) @map("is_active")
+  /// Incremented on password change / logout-everywhere; older tokens stop working.
+  tokenVersion Int       @default(0) @map("token_version")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  section       Section?                  @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  faculty       Faculty?                  @relation(fields: [facultyId], references: [id], onDelete: SetNull)
+  notifications Notification[]
+  calendar      GoogleCalendarConnection?
+  electives     UserElective[]
+
+  @@index([sectionId], map: "idx_users_section")
+  @@index([facultyId], map: "idx_users_faculty")
+  @@map("users")
+}
+
+/// Failed logins, used by the per-account rate limiter.
+model LoginAttempt {
+  id          BigInt   @id @default(autoincrement())
+  email       String   @db.VarChar(255)
+  attemptedAt DateTime @map("attempted_at") @db.Timestamptz(6)
+
+  @@index([email, attemptedAt], map: "idx_login_attempts_email_time")
+  @@map("login_attempts")
+}
+
+// ---------------------------------------------------------------------------
+// Timetable
+// ---------------------------------------------------------------------------
+
+model TimetableVersion {
+  id              String        @id @db.VarChar(64)
+  versionNumber   String        @map("version_number") @db.VarChar(32)
+  name            String        @db.VarChar(255)
+  status          VersionStatus @default(ACTIVE)
+  parentVersionId String?       @map("parent_version_id") @db.VarChar(64)
+  disruptionId    String?       @map("disruption_id") @db.VarChar(64)
+  approvedBy      String        @map("approved_by") @db.VarChar(128)
+  changeLog       String?       @map("change_log")
+  qualityScore    Decimal       @default(0) @map("quality_score") @db.Decimal(6, 2)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  parent     TimetableVersion?  @relation("VersionParent", fields: [parentVersionId], references: [id], onDelete: SetNull)
+  children   TimetableVersion[] @relation("VersionParent")
+  disruption Disruption?        @relation(fields: [disruptionId], references: [id], onDelete: SetNull)
+  entries    TimetableEntry[]
+  approvals  ApprovalLog[]
+
+  @@map("timetable_versions")
+}
+
+/// One class in one version. `coSectionIds` lists further sections that attend the very same
+/// class (a combined class such as "ADS CSE V + CSE VI"), so faculty and room are booked once.
+model TimetableEntry {
+  id            String      @id @db.VarChar(64)
+  versionId     String      @map("version_id") @db.VarChar(64)
+  sectionId     String      @map("section_id") @db.VarChar(64)
+  coSectionIds  String[]    @default([]) @map("co_section_ids") @db.VarChar(64)
+  subjectId     String      @map("subject_id") @db.VarChar(64)
+  facultyId     String      @map("faculty_id") @db.VarChar(64)
+  roomId        String      @map("room_id") @db.VarChar(64)
+  day           DayOfWeek   @map("day_of_week")
+  slotId        String      @map("slot_id") @db.VarChar(8)
+  sessionType   SessionType @default(LECTURE) @map("session_type")
+  /// Elective classes run in parallel; a student attends only one of them.
+  isElective    Boolean     @default(false) @map("is_elective")
+  /// Maintained by a trigger: false when the room is a shared facility, so it may be double-used.
+  roomExclusive Boolean     @default(true) @map("room_exclusive")
+  /// Original text of the college sheet cell, kept for audit.
+  sourceCell    String?     @map("source_cell")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  version TimetableVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  // Reference data that is still used by a class cannot be deleted (history must stay intact).
+  section Section          @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  subject Subject          @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  faculty Faculty          @relation(fields: [facultyId], references: [id], onDelete: Restrict)
+  room    Room             @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  slot    TimeSlot         @relation(fields: [slotId], references: [id])
+
+  // Double-booking rules are partial unique indexes created in the migration SQL.
+  @@index([versionId, sectionId, day], map: "idx_entries_section_day")
+  @@map("timetable_entries")
+}
+
+/// Lunch, mentoring, minor-programme windows etc. that apply to a whole section.
+model SectionBlock {
+  id        String    @id @db.VarChar(64)
+  sectionId String    @map("section_id") @db.VarChar(64)
+  day       DayOfWeek @map("day_of_week")
+  slotId    String    @map("slot_id") @db.VarChar(8)
+  kind      BlockKind
+  label     String    @db.VarChar(255)
+
+  section Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  slot    TimeSlot @relation(fields: [slotId], references: [id])
+
+  @@unique([sectionId, day, slotId, kind], map: "uq_section_block")
+  @@map("section_blocks")
+}
+
+// ---------------------------------------------------------------------------
+// Adaptive rescheduling
+// ---------------------------------------------------------------------------
+
+model Disruption {
+  id                 String           @id @db.VarChar(64)
+  disruptionType     String           @map("disruption_type") @db.VarChar(64)
+  affectedEntityType String           @map("affected_entity_type") @db.VarChar(64)
+  affectedEntityId   String           @map("affected_entity_id") @db.VarChar(64)
+  affectedEntityName String?          @map("affected_entity_name") @db.VarChar(128)
+  dayOfWeek          String           @map("day_of_week") @db.VarChar(32)
+  date               String?          @db.VarChar(16)
+  slotId             String?          @map("slot_id") @db.VarChar(8)
+  reason             String?
+  reportedBy         String?          @map("reported_by") @db.VarChar(128)
+  status             DisruptionStatus @default(RECORDED)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  resolvedAt         DateTime?        @map("resolved_at") @db.Timestamptz(6)
+
+  versions  TimetableVersion[]
+  approvals ApprovalLog[]
+
+  @@map("disruptions")
+}
+
+/// Audit trail of every human approval of a rescheduling alternative.
+model ApprovalLog {
+  id                String   @id @db.VarChar(64)
+  disruptionId      String   @map("disruption_id") @db.VarChar(64)
+  alternativeId     String   @map("alternative_id") @db.VarChar(64)
+  approvedVersionId String   @map("approved_version_id") @db.VarChar(64)
+  approvedBy        String   @map("approved_by") @db.VarChar(128)
+  notes             String?
+  approvedAt        DateTime @default(now()) @map("approved_at") @db.Timestamptz(6)
+
+  disruption Disruption       @relation(fields: [disruptionId], references: [id], onDelete: Cascade)
+  version    TimetableVersion @relation(fields: [approvedVersionId], references: [id], onDelete: Cascade)
+
+  @@map("approval_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications, calendar and import records
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id          String             @id @db.VarChar(64)
+  userId      String             @map("user_id") @db.VarChar(64)
+  role        String             @db.VarChar(32)
+  subjectName String             @map("subject_name") @db.VarChar(255)
+  oldSlot     String?            @map("old_slot") @db.VarChar(64)
+  newSlot     String?            @map("new_slot") @db.VarChar(64)
+  dayOfWeek   String?            @map("day_of_week") @db.VarChar(32)
+  message     String
+  status      NotificationStatus @default(UNREAD)
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt      DateTime?          @map("read_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status], map: "idx_notifications_user_status")
+  @@map("notifications")
+}
+
+model GoogleCalendarConnection {
+  userId             String             @id @map("user_id") @db.VarChar(64)
+  googleAccountEmail String?            @map("google_account_email") @db.VarChar(255)
+  authStatus         CalendarAuthStatus @default(ACTIVE) @map("auth_status")
+  tokenExpiresAt     DateTime?          @map("token_expires_at") @db.Timestamptz(6)
+  canRefreshToken    Boolean            @default(false) @map("can_refresh_token")
+  /// Google tokens, AES-256-GCM encrypted by the application (see src/auth/token-cipher.js).
+  accessTokenEnc     String?            @map("access_token_enc")
+  refreshTokenEnc    String?            @map("refresh_token_enc")
+  /// Google event ids created by the last sync, so events that no longer apply can be removed.
+  syncedEventIds     String[]           @default([]) @map("synced_event_ids")
+  lastSyncedAt       DateTime?          @map("last_synced_at") @db.Timestamptz(6)
+  eventsCount        Int                @default(0) @map("events_count")
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("google_calendar_connections")
+}
+
+/// One row per run of the college-sheet importer: what was read, what was loaded, what was skipped.
+model ImportBatch {
+  id         String   @id @db.VarChar(64)
+  sourceFile String   @map("source_file") @db.VarChar(255)
+  sourceHash String   @map("source_hash") @db.VarChar(64)
+  versionId  String?  @map("version_id") @db.VarChar(64)
+  summary    Json
+  /// Cells that could not be loaded (conflicts, unreadable text) with the reason.
+  issues     Json
+  importedAt DateTime @default(now()) @map("imported_at") @db.Timestamptz(6)
+
+  @@index([sourceHash], map: "idx_import_source_hash")
+  @@map("import_batches")
+}

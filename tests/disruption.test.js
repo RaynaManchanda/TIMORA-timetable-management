@@ -1,10 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { disruptionService } from '../src/adaptive/disruption/disruption-service.js';
-import { DISRUPTION_TYPES, DISRUPTION_STATUS } from '../src/adaptive/disruption/disruption-model.js';
+import { Disruption, DISRUPTION_TYPES, DISRUPTION_STATUS } from '../src/adaptive/disruption/disruption-model.js';
 
-test('Disruption Service - Record & Retrieve Disruption', () => {
-  const disruption = disruptionService.recordDisruption({
+test('Disruption model - builds a valid disruption with sensible defaults', () => {
+  const disruption = new Disruption({
     disruptionType: DISRUPTION_TYPES.FACULTY_ABSENCE,
     affectedEntityType: 'FACULTY',
     affectedEntityId: 'F101',
@@ -13,23 +12,35 @@ test('Disruption Service - Record & Retrieve Disruption', () => {
     reason: 'Medical leave'
   });
 
-  assert.ok(disruption.id);
-  assert.equal(disruption.disruptionType, DISRUPTION_TYPES.FACULTY_ABSENCE);
+  assert.ok(disruption.id.startsWith('DIS_'));
   assert.equal(disruption.status, DISRUPTION_STATUS.RECORDED);
-
-  const retrieved = disruptionService.getDisruptionById(disruption.id);
-  assert.equal(retrieved.id, disruption.id);
+  assert.equal(disruption.slotId, 'S2');
 });
 
-test('Disruption Service - Update Status', () => {
-  const disruption = disruptionService.recordDisruption({
+test('Disruption model - normalises the day name and infers the entity type', () => {
+  const disruption = new Disruption({
     disruptionType: DISRUPTION_TYPES.ROOM_UNAVAILABILITY,
-    affectedEntityType: 'ROOM',
     affectedEntityId: 'R201',
-    dayOfWeek: 'Wednesday',
-    reason: 'Maintenance'
+    dayOfWeek: 'wednesday'
   });
 
-  const updated = disruptionService.updateDisruptionStatus(disruption.id, DISRUPTION_STATUS.ANALYZED);
-  assert.equal(updated.status, DISRUPTION_STATUS.ANALYZED);
+  assert.equal(disruption.dayOfWeek, 'Wednesday');
+  assert.equal(disruption.affectedEntityType, 'ROOM');
+});
+
+test('Disruption model - rejects unknown types, days, slots and missing entities', () => {
+  const valid = { disruptionType: DISRUPTION_TYPES.FACULTY_ABSENCE, affectedEntityId: 'F101', dayOfWeek: 'Tuesday' };
+
+  assert.throws(() => new Disruption({ ...valid, disruptionType: 'ALIEN_INVASION' }), /Invalid disruption type/);
+  assert.throws(() => new Disruption({ ...valid, dayOfWeek: 'Sunday' }), /valid day of the week/);
+  assert.throws(() => new Disruption({ ...valid, slotId: 'S42' }), /Invalid time slot/);
+  assert.throws(() => new Disruption({ ...valid, affectedEntityId: '' }), /affected entity ID/);
+  assert.throws(() => new Disruption({ ...valid, reason: 'x'.repeat(501) }), /at most 500/);
+});
+
+test('Disruption model - a holiday needs no specific entity', () => {
+  const holiday = new Disruption({ disruptionType: DISRUPTION_TYPES.HOLIDAY, dayOfWeek: 'Friday' });
+
+  assert.equal(holiday.affectedEntityId, 'ALL');
+  assert.equal(holiday.affectedEntityType, 'TIMETABLE');
 });
