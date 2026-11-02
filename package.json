@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "predev": "node scripts/dev-setup.mjs",
     "dev": "node --env-file=.env --watch server.js",
     "db:up": "docker compose up -d --wait db",
     "db:down": "docker compose stop db",
@@ -26,7 +27,9 @@
     "test:rayna": "node --test testcases/rayna/rayna.testcases.test.js",
     "test:rohit": "node --test testcases/rohit/rohit.testcases.test.js",
     "test:raghav": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/backend",
-    "test:testcases": "node scripts/verify-testcases.mjs"
+    "test:testcases": "node scripts/verify-testcases.mjs",
+    "db:flash": "node scripts/dev-setup.mjs --flash",
+    "db:dump": "node scripts/dev-setup.mjs --dump"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^6.19.3",

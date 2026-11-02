@@ -17,4 +17,4 @@ Scripts (need `npm run test:db:up`):
 | TC16, TC17 | calendar events, expired authorisation | `calendar.test.js` |
 | TC20 | 100 concurrent users, health check | `performance.test.js` |
 
-In the app: **Settings** shows the connection state (TC16/TC17), the bell/**Notifications** page lists and marks notifications read (TC14/TC15), and signing in with a wrong password six times locks the account for 15 minutes (TC19).
+**Test console** (administrator menu) runs TC06, TC07 (tampered token), TC08, TC10, TC11, TC12, TC18, TC19 and TC20 live with PASS/FAIL. In the app: **Settings** shows the connection state (TC16/TC17), the bell/**Notifications** page lists and marks notifications read (TC14/TC15), and signing in with a wrong password six times locks the account for 15 minutes (TC19).

@@ -27,11 +27,20 @@ TIMORA is an academic timetable management system that loads the college's timet
 
 ```bash
 npm install
-cp .env.example .env          # set POSTGRES_PASSWORD, DATABASE_URL (same password) and JWT_SECRET
-npm run db:up                 # PostgreSQL 16 in Docker (host port 5434)
-npm run db:setup              # prisma generate + migrate deploy + import the college workbook
 npm run dev                   # http://localhost:3000
 ```
+
+`npm run dev` first runs `scripts/dev-setup.mjs` (the npm `predev` hook), which on a fresh machine does everything for you:
+
+1. starts Docker Desktop if it is not running,
+2. creates `.env` from `.env.example` with generated secrets if there is none (add your Google credentials there later),
+3. starts the PostgreSQL 16 container (`docker compose up -d --wait db`, host port 5434),
+4. **loads `database/timora-dev.dump.sql`** (the college timetable already imported) when the database is empty,
+5. applies Prisma migrations that are newer than the dump.
+
+An existing database is never overwritten by `npm run dev`. `npm run db:flash` replaces it with the dump on purpose; `npm run db:dump` rewrites the dump from your running dev database (without users, Google tokens, disruptions, drafts or extra versions). The demo accounts are created when the server starts.
+
+The older manual route still works: `npm run db:up`, then `npm run db:setup` (migrate + import the workbook).
 
 `npm run db:setup` is safe to repeat: migrations already applied are skipped and a workbook that was already imported is not imported twice.
 

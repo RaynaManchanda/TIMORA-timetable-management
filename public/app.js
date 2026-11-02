@@ -77,6 +77,7 @@ const PAGE_ROLES = {
   'academic-data': ['COORDINATOR', 'ADMIN'],
   analytics: ['COORDINATOR', 'ADMIN'],
   'ai-assistant': ['COORDINATOR', 'ADMIN'],
+  testcases: ['COORDINATOR', 'ADMIN'],
   timetable: ['COORDINATOR', 'ADMIN', 'FACULTY', 'STUDENT'],
   notifications: ['COORDINATOR', 'ADMIN', 'FACULTY', 'STUDENT'],
   settings: ['COORDINATOR', 'ADMIN', 'FACULTY', 'STUDENT']
@@ -283,6 +284,7 @@ function navigateTo(pageId) {
     'academic-data': 'Academic Data Management',
     'analytics': 'Versions & Quality Analytics',
     'ai-assistant': 'AI Constraint Assistant',
+    'testcases': 'Test console',
     'notifications': 'Schedule Notifications',
     'settings': 'Settings'
   };
@@ -305,6 +307,7 @@ function navigateTo(pageId) {
   if (pageId === 'analytics') renderAnalytics();
   if (pageId === 'notifications') renderNotifications();
   if (pageId === 'settings') renderSettings();
+  if (pageId === 'testcases') document.dispatchEvent(new CustomEvent('timora:open-testcases'));
 }
 
 // ==============================================================================
@@ -1107,7 +1110,12 @@ function initGenerationEngine() {
 
         const res = await api('/api/admin/timetables/generate', {
           method: 'POST',
-          body: JSON.stringify({ sectionId: sectionId || undefined, maxGapHours: Number(maxGap), mandatoryBreak })
+          body: JSON.stringify({
+            sectionId: sectionId || undefined,
+            maxGapHours: Number(maxGap),
+            mandatoryBreak,
+            studentCount: document.getElementById('gen-student-count')?.value || undefined
+          })
         });
 
         state.lastGeneratedResult = res;

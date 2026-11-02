@@ -77,6 +77,14 @@ export function createGenerationService({ prisma }) {
      */
     async generateDraft(body, creator) {
       const { sectionId, maxGapHours, mandatoryBreak } = body ?? {};
+      // Optional what-if: plan the section as if it had this many students (e.g. to see that no room is big enough).
+      let studentCountOverride = null;
+      if (body?.studentCount !== undefined && body.studentCount !== null && body.studentCount !== '') {
+        studentCountOverride = Number(body.studentCount);
+        if (!Number.isInteger(studentCountOverride) || studentCountOverride < 1 || studentCountOverride > 1000) {
+          throw new ValidationError('studentCount must be a whole number between 1 and 1000.');
+        }
+      }
       const active = await versions.findActive();
       if (!active) throw new ConflictError('There is no active timetable version to plan from.');
 
@@ -111,7 +119,7 @@ export function createGenerationService({ prisma }) {
           subjects: load,
           faculty,
           rooms,
-          sections: [section],
+          sections: [studentCountOverride ? { ...section, studentCount: studentCountOverride } : section],
           timeSlots,
           blocks,
           fixedEntries: [...keptEntries, ...generated],

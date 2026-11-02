@@ -2178,3 +2178,14 @@ button {
   .btn:active:not(:disabled), .nav-item:active, .tab-btn:active, .quick-chip:active, .btn-signout:active, .tt-day-chip:active { transform: none; }
   .tt-day-chips { scroll-behavior: auto; }
 }
+
+/* Test console */
+.tc-owner { margin: 1.25rem 0 0.5rem; font-size: 0.95rem; }
+.tc-row { padding: 0.75rem 0; border-top: 1px solid var(--border-color); }
+.tc-expect { font-size: 0.85rem; margin: 0.25rem 0 0.5rem; }
+.tc-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.tc-result { font-weight: 700; }
+.tc-pass { color: #059669; }
+.tc-fail { color: #dc2626; }
+.tc-detail { font-size: 0.85rem; overflow-wrap: anywhere; }
+.tc-student { margin-bottom: 0.5rem; }
